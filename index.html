@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kusursuz Haftalık Planlayıcı</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- PDF Kütüphanesi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- YENİ: Yapay Zeka (Metin Okuma / OCR) Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-text">
+                <h1>
+                    <i class="fa-solid fa-layer-group"></i> Haftalık Odak
+                    <button class="settings-icon-btn" id="open-settings-btn" title="Ayarlar"><i
+                            class="fa-solid fa-gear"></i></button>
+                </h1>
+                <p>Hedeflerini planla, disiplinle uygula, gelişimini takip et.</p>
+            </div>
+
+            <div class="header-cards">
+                <div class="review-card" id="open-questions-btn" style="background: #FF4747;">
+                    <div class="review-content">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Yapamadığım<br>Sorular</span>
+                    </div>
+                </div>
+
+                <div class="review-card" id="open-review-btn">
+                    <div class="review-content">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Konu Tekrar<br>Takip Sistemi</span>
+                    </div>
+                </div>
+
+                <div class="progress-card">
+                    <div class="progress-header">
+                        <span>Haftalık İlerleme</span>
+                        <span id="progress-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="week-navigation">
+            <button id="prev-week" class="nav-btn" title="Geçmiş Hafta"><i
+                    class="fa-solid fa-chevron-left"></i></button>
+            <h2 id="current-week-label">Yükleniyor...</h2>
+            <button id="next-week" class="nav-btn" title="Gelecek Hafta"><i
+                    class="fa-solid fa-chevron-right"></i></button>
+            <button id="today-btn" class="today-btn">Bu Hafta</button>
+        </div>
+
+        <main class="board" id="board"></main>
+    </div>
+
+    <!-- GÖREV EKLEME MODALI -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Yeni Görev</h2>
+                <button class="close-btn" id="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="row">
+                <div class="input-group half">
+                    <label>Sınav Türü</label>
+                    <select id="task-exam-type">
+                        <option value="" disabled selected>Seçiniz</option>
+                        <option value="TYT">TYT</option>
+                        <option value="AYT">AYT (Sayısal)</option>
+                    </select>
+                </div>
+                <div class="input-group half">
+                    <label>Ders</label>
+                    <select id="task-lesson-select" disabled>
+                        <option value="" disabled selected>Önce Sınav Seç</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Konu</label>
+                <input type="text" id="task-topic" placeholder="Örn: Temel Kavramlar" autocomplete="off">
+            </div>
+            <div class="row">
+                <div class="input-group half">
+                    <label>Süre (Dk)</label>
+                    <input type="number" id="task-video-length" placeholder="Örn: 120" min="0">
+                </div>
+                <div class="input-group half">
+                    <label>Hız</label>
+                    <select id="task-video-speed">
+                        <option value="1">1.0x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="1.75">1.75x</option>
+                        <option value="2">2.0x</option>
+                    </select>
+                </div>
+            </div>
+            <div class="calc-result">
+                <i class="fa-solid fa-stopwatch"></i> Toplam Ayırman Gereken Süre: <br>
+                <strong id="calculated-time">0 dk</strong>
+                <p class="calc-hint">(Hızlandırılmış süre + Her 1 saat için 30dk mola/not)</p>
+            </div>
+
+            <div class="manual-time-container">
+                <label class="custom-checkbox-label">
+                    <input type="checkbox" id="manual-time-checkbox">
+                    Süreyi ben belirlemek istiyorum
+                </label>
+                <div class="input-group" id="manual-time-wrapper" style="display: none; margin-top: 10px;">
+                    <input type="text" id="manual-time-input" placeholder="Örn: 45 dk veya 2 Saat" autocomplete="off">
+                </div>
+            </div>
+            <button id="save-task-btn" class="primary-btn">Görevi Ekle</button>
+        </div>
+    </div>
+
+    <!-- AYARLAR MODALI -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-gear"></i> Ayarlar</h2>
+                <button class="close-btn" id="close-settings-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="setting-item">
+                <span>Gece Modu</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <hr class="modal-divider">
+            <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;">Dışa Aktar</h3>
+            <div class="row">
+                <button class="action-btn pdf-btn" id="export-pdf-btn"><i class="fa-solid fa-file-pdf"></i> PDF Çıktı
+                    Al</button>
+                <button class="action-btn excel-btn" id="export-csv-btn"><i class="fa-solid fa-file-excel"></i> Excel
+                    Aktar</button>
+            </div>
+            <hr class="modal-divider">
+            <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;">Tehlikeli Bölge</h3>
+            <button class="danger-btn" id="reset-tasks-btn"><i class="fa-solid fa-trash"></i> Haftaları Sıfırla</button>
+            <button class="danger-btn" id="reset-reviews-btn"><i class="fa-solid fa-arrows-rotate"></i> Tekrarları
+                Sıfırla</button>
+            <button class="danger-btn" id="reset-questions-btn" style="background: #a855f7; color: white;"><i
+                    class="fa-solid fa-bomb"></i> Soru Bankasını Temizle</button>
+        </div>
+    </div>
+
+    <!-- TEKRAR MODALI -->
+    <div class="modal-overlay" id="review-modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-arrows-rotate"></i> Konu Tekrar Takip</h2>
+                <button class="close-btn" id="close-review-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="row">
+                <div class="input-group half">
+                    <select id="review-exam-type">
+                        <option value="" disabled selected>Sınav Seç</option>
+                        <option value="TYT">TYT</option>
+                        <option value="AYT">AYT (Sayısal)</option>
+                    </select>
+                </div>
+                <div class="input-group half">
+                    <select id="review-lesson-select" disabled>
+                        <option value="" disabled selected>Ders Seç</option>
+                    </select>
+                </div>
+            </div>
+            <div class="review-topics-container" id="review-topics-container">
+                <div class="review-placeholder">Ders seçtiğinizde tüm konular burada listelenecektir.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- YAPAMADIĞIM SORULAR & ARŞİV MODALI -->
+    <div class="modal-overlay" id="questions-modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-camera"></i> Soru Bankam</h2>
+                <button class="close-btn" id="close-questions-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- YENİ: Sekmeler -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('folders')">Klasörlerim (Sorular)</button>
+                <button class="tab-btn" onclick="switchTab('archives')">Geçmiş Denemeler & Tekrar</button>
+            </div>
+
+            <!-- 1. Klasörler Sekmesi -->
+            <div id="tab-folders" class="tab-content active">
+                <div class="drop-zone" id="question-drop-zone"
+                    onclick="document.getElementById('question-file-input').click()">
+                    <p id="drop-zone-text"><i class="fa-solid fa-cloud-arrow-up"></i> Fotoğrafları Sürükle veya Tıkla
+                    </p>
+                    <span id="drop-zone-subtext">(Yapay zeka içindeki metni okuyup otomatik ders ataması yapar)</span>
+                    <input type="file" id="question-file-input" multiple accept="image/*" style="display: none;">
+
+                    <!-- Yapay Zeka İlerleme Çubuğu -->
+                    <div class="ai-progress" id="ai-progress-container">
+                        <div class="ai-progress-bar">
+                            <div class="ai-progress-fill" id="ai-progress-fill"></div>
+                        </div>
+                        <p id="ai-progress-text">Yapay zeka analiz ediyor... Lütfen bekleyin.</p>
+                    </div>
+                </div>
+
+                <div class="folder-container" id="folder-container"></div>
+                <button id="generate-questions-pdf-btn" class="primary-btn"
+                    style="margin-top: 15px; background: #FF4747;">
+                    <i class="fa-solid fa-file-pdf"></i> Sadece YENİ Soruları PDF Yap & Arşive Ekle
+                </button>
+            </div>
+
+            <!-- 2. Arşiv Sekmesi (Spaced Repetition) -->
+            <div id="tab-archives" class="tab-content">
+                <div class="archive-info">
+                    <i class="fa-solid fa-circle-info"></i> PDF yaptığın sorular buraya kaydedilir. 30 gün ve daha uzun
+                    süre geçmişse <strong>kırmızı alarm</strong> verir.
+                </div>
+                <div class="archive-list" id="archive-list">
+                    <!-- Arşivlenen PDF'ler JavaScript ile çizilecek -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
